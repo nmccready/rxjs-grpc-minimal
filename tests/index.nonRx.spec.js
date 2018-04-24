@@ -1,0 +1,133 @@
+const { credentials } = require('grpc');
+const JSONStream = require('JSONStream');
+const through2 = require('through2');
+const { loadObject } = require('grpc');
+const { loadSync } = require('protobufjs');
+
+const debug = require('../debug').spawn('test:helloworld');
+const getProtoPath = require('./utils/getProtoPath');
+const StringStream = require('./utils/StringStream');
+const logStream = require('./utils/logStream');
+const { initServer, reply } = require('./utils/helloServer');
+
+const toGrpc = loadObject;
+
+const protPath = getProtoPath(__dirname)(
+  '../examples/helloworld/helloworld.proto'
+);
+const URI = '127.0.0.1:56001';
+
+describe('helloworld', () => {
+  let grpcAPI, initServerPayload;
+
+  describe('grpc client', () => {
+    beforeEach(() => {
+      const pbAPI = loadSync(protPath).lookup('helloworld');
+      grpcAPI = toGrpc(pbAPI);
+
+      initServerPayload = initServer({
+        uri: URI,
+        grpcAPI,
+        serviceName: 'Greeter'
+      });
+    });
+
+    afterEach(() => {
+      const { server } = initServerPayload;
+      if (server) server.forceShutdown();
+    });
+
+    it('created', () => {
+      expect(initServerPayload.GrpcService).toBeTruthy();
+    });
+
+    describe('connection', () => {
+      let conn;
+
+      beforeEach(() => {
+        conn = new initServerPayload.GrpcService(
+          URI,
+          credentials.createInsecure()
+        );
+      });
+
+      afterEach(() => conn.close());
+
+      it('connect', () => {
+        expect(conn).toBeTruthy();
+        expect(conn.$channel).toBeTruthy();
+      });
+
+      describe('Greeter', () => {
+        it('non stream', done => {
+          const name = 'Bob';
+          conn.sayHello({ name }, (err, resp) => {
+            if (err) return done(err);
+            expect(resp).toEqual({ message: reply(name) });
+            done();
+          });
+        });
+
+        it('stream reply', done => {
+          const name = 'Brody';
+          let expectedCalls = 2;
+          conn
+            .sayMultiHello({ name, num_greetings: String(expectedCalls) })
+            .once('error', done)
+            .once('status', stat => {
+              debug(() => ({ stat }));
+            })
+            .pipe(through2.obj(onData));
+
+          function onData(resp, enc, cb) {
+            debug({ resp });
+            expect(resp).toEqual({
+              message: reply(name)
+            });
+            expectedCalls--;
+            cb();
+            if (!expectedCalls) {
+              done();
+            }
+          }
+        });
+        it('streamish (entire req message is buffered) request, non-stream reply', done => {
+          const name = 'STREAM';
+          const stream = conn
+            .streamSayHello((err, resp) => {
+              expect(resp).toEqual({ message: reply(name) });
+              done();
+            })
+            .once('error', done)
+            .once('status', stat => {
+              debug(() => ({ stat }));
+            });
+
+          stream.write({ name });
+          stream.end();
+        });
+      });
+
+      it('pure-stream still.. (entire req message is buffered to json)', done => {
+        const name = 'STREAM';
+        const stream = conn
+          .streamSayHello((err, resp) => {
+            expect(resp).toEqual({ message: reply(name) });
+            done();
+          })
+          .once('error', done)
+          .once('status', stat => {
+            debug(() => ({ stat }));
+          });
+
+        // let's pretend this stream came from a large file
+        const clientStream = new StringStream(JSON.stringify({ name }));
+        // pipe it out , log, make json (makes grpc happy), then send to client
+        clientStream
+          .pipe(logStream())
+          .pipe(JSONStream.parse())
+          .pipe(stream);
+      });
+    });
+  });
+});
