@@ -36,11 +36,11 @@ function mockService() {
       /* eslint-disable camelcase, prefer-const */
       // SINGLE REQUEST
       let {
-        request: { name, num_greetings }
+        request: { name, numGreetings }
       } = client;
-      dbg({ name, num_greetings });
-      num_greetings = num_greetings || 1;
-      while (num_greetings-- >= 0) {
+      dbg({ name, numGreetings });
+      numGreetings = numGreetings || 1;
+      while (--numGreetings >= 0) {
         dbg('wrote');
         client.write({ message: reply(name) });
       }

@@ -14,10 +14,11 @@ module.exports = {
   overrides: {
     files: ['tests/**/*spec.js'],
     env: {
-      jest: true
+      mocha: true,
     },
     rules: {
-      'handle-callback-err': 0
+      'handle-callback-err': 0,
+      'no-unused-expressions': 0
     }
   }
 };

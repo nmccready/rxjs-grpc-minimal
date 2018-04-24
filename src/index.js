@@ -1,9 +1,5 @@
 module.exports = {
-  createServer: require('./server').create,
-  createClient: require('./client').create,
-  getServiceNames
+  toRxServer: require('./server').create,
+  toRxClient: require('./client').create,
+  utils: require('./utils')
 };
-
-function getServiceNames(pkg) {
-  return Object.keys(pkg).filter(name => pkg[name].service);
-}
