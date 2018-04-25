@@ -1,6 +1,6 @@
 {
   "main": "src/index",
-  "name": "@nem/rxjs-grpc-minimal",
+  "name": "rxjs-grpc-minimal",
   "version": "0.0.0",
   "description": "grpc node callback and streams wrapped in observables",
   "license": "MIT",
