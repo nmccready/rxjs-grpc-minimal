@@ -1,7 +1,6 @@
-const { credentials } = require('grpc');
 const JSONStream = require('JSONStream');
 const through2 = require('through2');
-const { loadObject } = require('grpc');
+const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');
 
@@ -9,7 +8,7 @@ const debug = require('../debug').spawn('test:helloworld');
 const getProtoPath = require('./utils/getProtoPath');
 const StringStream = require('./utils/StringStream');
 const logStream = require('./utils/logStream');
-const { initServer, reply } = require('./utils/helloServer');
+const { initServer, reply } = require('../examples/helloworld/impls/server');
 const { toRxClient } = require('../src');
 
 const toGrpc = loadObject;

@@ -1,12 +1,11 @@
-const { credentials } = require('grpc');
-const { loadObject } = require('grpc');
+const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');
 const { Subject, ReplaySubject, Observable } = require('rxjs');
 
 const getProtoPath = require('./utils/getProtoPath');
-const server = require('../examples/helloworld/server');
-const serverRx = require('../examples/helloworld/serverRx');
+const server = require('../examples/helloworld/impls/server');
+const serverRx = require('../examples/helloworld/impls/serverRx');
 const { toRxClient } = require('../src');
 
 const toGrpc = loadObject;

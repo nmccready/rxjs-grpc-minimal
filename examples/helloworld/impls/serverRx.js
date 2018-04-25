@@ -1,6 +1,6 @@
 const { Server, ServerCredentials } = require('grpc');
 const { Observable } = require('rxjs');
-const { toRxServer } = require('../../src/index');
+const { toRxServer } = require('../../../src');
 
 function mockService() {
   return {

@@ -1,75 +1,18 @@
-const { Server, ServerCredentials } = require('grpc');
+const { loadObject } = require('grpc');
+const { loadSync } = require('protobufjs');
+const path = require('path');
 
-const through2 = require('through2');
-const debug = require('../../debug').spawn('test:utils:helloServer');
+const { initServer } = require('./impls/serverRx');
 
-function mockService() {
-  return {
-    sayHello(call, callback) {
-      callback(null, { message: reply(call.request.name) });
-    },
-    streamSayHello(client, mainCb) {
-      const dbg = debug.spawn('streamSayHello');
-      let message;
+async function main() {
+  const protPath = path.join(__dirname, './helloworld.proto');
+  const grpcAPI = loadObject(loadSync(protPath).lookup('helloworld'));
 
-      /*
-        NOT USING LEGACY NODE STREAMS API 'data', and 'end'
-        NOTE: https://github.com/substack/stream-handbook#classic-readable-streams
-      */
-      const transform = (m, enc, cb) => {
-        dbg({ m });
-        message = m;
-        cb();
-      };
-
-      const flush = cb => {
-        const { name } = message;
-        mainCb(null, { message: reply(name) });
-        cb();
-      };
-
-      client.pipe(through2.obj(transform, flush));
-    },
-    sayMultiHello(client) {
-      // STREAMING RESPONSE
-      const dbg = debug.spawn('sayMultiHello');
-      /* eslint-disable camelcase, prefer-const */
-      // SINGLE REQUEST
-      let {
-        request: { name, numGreetings }
-      } = client;
-      dbg({ name, numGreetings });
-      numGreetings = numGreetings || 1;
-      while (--numGreetings >= 0) {
-        dbg('wrote');
-        client.write({ message: reply(name) });
-      }
-      dbg('end');
-      client.end();
-      /* eslint-enable camelcase */
-    }
-  };
+  initServer({
+    uri: 'localhost:50051',
+    grpcAPI,
+    serviceName: 'Greeter'
+  });
 }
 
-function initServer({ uri, grpcAPI, serviceName }) {
-  const server = new Server();
-  const GrpcService = grpcAPI[serviceName];
-
-  server.bind(uri, ServerCredentials.createInsecure());
-  server.addService(GrpcService.service, mockService());
-  server.start();
-
-  return {
-    server,
-    GrpcService
-  };
-}
-
-function reply(name) {
-  return `Hello ${name}!`;
-}
-
-module.exports = {
-  initServer,
-  reply
-};
+main().catch(error => console.error(error));
