@@ -10,7 +10,7 @@
     "url": "https://github.com/nmccready/rxjs-grpc-minimal.git"
   },
   "files": [
-    "./src/*.js"
+    "src"
   ],
   "scripts": {
     "lint": "eslint **/*.js",
