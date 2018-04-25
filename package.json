@@ -14,7 +14,10 @@
   ],
   "scripts": {
     "lint": "eslint **/*.js",
-    "test": "yarn lint && mocha --exclude node_modules ./**/*.js"
+    "test": "yarn lint && mocha --exclude node_modules ./**/*.js",
+    "server": "node ./examples/helloworld/server.js",
+    "client": "node ./examples/helloworld/client.js",
+    "client2": "node ./examples/helloworld/client2.js"
   },
   "dependencies": {
     "debug-fabulous": "^1.1.0",
