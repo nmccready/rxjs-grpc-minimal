@@ -60,7 +60,8 @@ function createMethod(clientMethod) {
 
       if (clientMethod.requestStream) {
         const observable = args[0];
-        if (!observable || !(observable instanceof Observable)) {
+        /* ducktyping , tried intanceof and it is not reliable */
+        if (!observable || !observable.subscribe || !observable.forEach) {
           return observer.error(
             new Error('Observable required to subscribe to')
           );
