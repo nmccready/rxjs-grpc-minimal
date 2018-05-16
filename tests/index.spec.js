@@ -57,6 +57,15 @@ function runSuite({ initServer, reply }, serverName) {
         expect(initServerPayload.GrpcService).to.be.ok;
       });
 
+      // grpc (grpc-node) 1.11.x breaking change
+      it('$method_names is not a function', () => {
+        /* eslint-disable camelcase */
+        const { $method_names } = initServerPayload.GrpcService.prototype;
+        expect($method_names).to.be.ok;
+        expect(typeof $method_names).to.be.eql('object');
+        /* eslint-enable camelcase */
+      });
+
       describe('connection', () => {
         it('connect', () => {
           expect(conn).to.be.ok;

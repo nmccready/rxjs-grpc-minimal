@@ -10,6 +10,9 @@ function create(grpcApi, methExt = 'Rx') {
     const service = grpcApi[name];
     for (const methName of Object.keys(service.prototype)) {
       const origFn = service.prototype[methName];
+      if (typeof origFn !== 'function') {
+        continue;
+      }
       service.prototype[`${methName}${methExt}`] = createMethod(origFn);
     }
   }
