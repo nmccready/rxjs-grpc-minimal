@@ -1,21 +1,31 @@
 const { Observable } = require('rxjs');
 const through2 = require('through2');
 
-function create(Service, rxImpl) {
+const debug = require('../debug').spawn('server');
+
+function create(Service, rxImpl, serviceName) {
   const service = {};
+  const dbg = serviceName ? debug.spawn(serviceName) : debug;
   for (const name in Service.prototype) {
     if (typeof rxImpl[name] === 'function') {
-      service[name] = createMethod(rxImpl, name, Service.prototype);
+      service[name] = createMethod(
+        rxImpl,
+        name,
+        Service.prototype,
+        dbg.spawn(name)
+      );
     }
   }
   return service;
 }
 
-function createMethod(rxImpl, name, methods) {
+function createMethod(rxImpl, name, methods, dbg) {
   const serviceMethod = methods[name];
   return async function(call, callback) {
     let observable = Observable.of(call.request);
+    dbg(() => 'called');
     if (serviceMethod.requestStream) {
+      dbg(() => 'requestStream');
       observable = new Observable(observer => {
         call.pipe(through2.obj(onData, onEnd));
         call.on('error', observer.error);
@@ -28,9 +38,7 @@ function createMethod(rxImpl, name, methods) {
         function onEnd(cb) {
           setImmediate(() => {
             if (call.cancelled) {
-              observer.error(
-                new Error(`Call to "${name}" cancelled.`)
-              );
+              observer.error(new Error(`Call to "${name}" cancelled.`));
             } else {
               observer.complete();
             }
@@ -43,6 +51,7 @@ function createMethod(rxImpl, name, methods) {
 
     const response = rxImpl[name](observable, call.metadata);
     if (serviceMethod.responseStream) {
+      dbg(() => 'responseStream');
       await response.forEach(data => call.write(data));
       call.end();
     } else {

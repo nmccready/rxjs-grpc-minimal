@@ -1,6 +1,8 @@
 const { Observable } = require('rxjs');
 const though2 = require('through2');
 const { getServiceNames } = require('../src/utils');
+
+const debug = require('../debug').spawn('client');
 /**
  * @param  {Object} grpcApi - pre-loaded grpcApi
  * @param  {String} methExt - your choice to extend or override the methodNames
@@ -8,29 +10,37 @@ const { getServiceNames } = require('../src/utils');
 function create(grpcApi, methExt = 'Rx') {
   for (const name of getServiceNames(grpcApi)) {
     const service = grpcApi[name];
+    const dbg = debug.spawn(name);
     for (const methName of Object.keys(service.prototype)) {
       const origFn = service.prototype[methName];
       if (typeof origFn !== 'function') {
         continue;
       }
-      service.prototype[`${methName}${methExt}`] = createMethod(origFn);
+      service.prototype[`${methName}${methExt}`] = createMethod(
+        origFn,
+        dbg.spawn(methName)
+      );
     }
   }
 
   return grpcApi;
 }
 
-function createMethod(clientMethod) {
+function createMethod(clientMethod, dbg) {
   return function(...args) {
+    dbg(() => 'called');
     /* NOTE: BE AWARE
     This Observable is lazy! So know what kind of observers your passing in!
     Subject / vs ReplaySubject might miss some entities!
     */
     return new Observable(observer => {
       const handler = (error, data) => {
+        const d = dbg.spawn('handler');
         if (error) {
+          d(() => ({ error }));
           observer.error(error);
         } else {
+          d(() => ({ data }));
           observer.next(data);
         }
         observer.complete();
@@ -45,11 +55,16 @@ function createMethod(clientMethod) {
       }
 
       if (clientMethod.responseStream) {
+        const d = dbg.spawn('responseStream');
         const onData = (data, _, cb) => {
+          d(() => ({ data }));
           observer.next(data);
           cb();
         };
-        const onError = error => observer.error(error);
+        const onError = error => {
+          d(() => ({ error }));
+          observer.error(error);
+        };
 
         const onEnd = cb => {
           observer.complete();
@@ -62,6 +77,7 @@ function createMethod(clientMethod) {
       }
 
       if (clientMethod.requestStream) {
+        const d = dbg.spawn('requestStream');
         const observable = args[0];
         /* ducktyping , tried intanceof and it is not reliable */
         if (!observable || !observable.subscribe || !observable.forEach) {
@@ -71,10 +87,12 @@ function createMethod(clientMethod) {
         }
 
         observable.subscribe({
-          next: value => {
-            call.write(value);
+          next: data => {
+            d(() => ({ data }));
+            call.write(data);
           },
           error: () => {
+            d(() => 'error canceling');
             call.cancel();
           },
           complete: () => {

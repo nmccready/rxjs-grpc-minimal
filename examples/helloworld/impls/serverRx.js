@@ -37,7 +37,7 @@ function initServer({ uri, grpcAPI, serviceName }) {
   server.bind(uri, ServerCredentials.createInsecure());
   server.addService(
     GrpcService.service,
-    toRxServer(GrpcService, mockService())
+    toRxServer(GrpcService, mockService(), serviceName)
   );
   server.start();
 
