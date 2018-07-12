@@ -27,7 +27,7 @@ function create(grpcApi, methExt = 'Rx') {
 }
 
 function createMethod(clientMethod, dbg) {
-  return function(...args) {
+  function rxWrapper(...args) {
     dbg(() => 'called');
     /* NOTE: BE AWARE
     This Observable is lazy! So know what kind of observers your passing in!
@@ -102,6 +102,9 @@ function createMethod(clientMethod, dbg) {
       }
     });
   };
+  // copy over useful fields like, requestStream, responseStream etc..
+  Object.assign(rxWrapper, clientMethod);
+  return rxWrapper;
 }
 
 module.exports = {

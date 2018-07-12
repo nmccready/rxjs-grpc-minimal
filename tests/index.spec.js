@@ -103,9 +103,13 @@ function runSuite({ initServer, reply }, serverName) {
             writer.complete();
 
             // internal observable actually loads into memory now!
-            return observable.forEach(resp => {
-              expect(resp).to.deep.equal({ message: reply(name) });
-            });
+            return observable
+              .forEach(resp => {
+                expect(resp).to.deep.equal({ message: reply(name) });
+              })
+              .then(() => {
+                writer.unsubscribe();
+              });
           });
 
           it('streamish - Subject', () => {
@@ -113,9 +117,13 @@ function runSuite({ initServer, reply }, serverName) {
             const writer = new Subject();
             const observable = conn.streamSayHelloRx(writer);
 
-            const promise = observable.forEach(resp => {
-              expect(resp).to.deep.equal({ message: reply(name) });
-            });
+            const promise = observable
+              .forEach(resp => {
+                expect(resp).to.deep.equal({ message: reply(name) });
+              })
+              .then(() => {
+                writer.unsubscribe();
+              });
             // ok we're now subscribed
             writer.next({ name });
             writer.complete();

@@ -23,6 +23,9 @@ function mockService() {
       };
 
       const flush = cb => {
+        if (!message) {
+          return cb();
+        }
         const { name } = message;
         mainCb(null, { message: reply(name) });
         cb();
