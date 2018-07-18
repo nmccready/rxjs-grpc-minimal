@@ -39,7 +39,7 @@ function mockService() {
       /* eslint-disable camelcase, prefer-const */
       // SINGLE REQUEST
       let {
-        request: { name, numGreetings }
+        request: { name, numGreetings, doComplete }
       } = client;
       dbg({ name, numGreetings });
       numGreetings = numGreetings || 1;
@@ -48,7 +48,11 @@ function mockService() {
         client.write({ message: reply(name) });
       }
       dbg('end');
-      client.end();
+      if (doComplete) {
+        client.end();
+      }
+      client.once('cancelled', client.end);
+
       /* eslint-enable camelcase */
     }
   };

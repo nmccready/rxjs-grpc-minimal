@@ -3,6 +3,8 @@ const through2 = require('through2');
 
 const debug = require('../debug').spawn('server');
 
+class CanceledError extends Error {}
+
 function create(Service, rxImpl, serviceName) {
   const service = {};
   const dbg = serviceName ? debug.spawn(serviceName) : debug;
@@ -38,7 +40,16 @@ function createMethod(rxImpl, name, methods, dbg) {
         function onEnd(cb) {
           setImmediate(() => {
             if (call.cancelled) {
-              observer.error(new Error(`Call to "${name}" cancelled.`));
+              /*
+              TODO: DEBATING ON WHETHER THIS SHOULD BE AN ERROR OBJECT
+              We're using error event here to signal cancellation.
+              which is not is not really an error; its an additional state.
+              It would be nice to have
+              observer.cancelled(SomeObject|String);
+
+              I would love to hear other ideas.
+              */
+              observer.error(new CanceledError(`Call to "${name}" cancelled.`));
             } else {
               observer.complete();
             }
@@ -49,9 +60,12 @@ function createMethod(rxImpl, name, methods, dbg) {
       });
     }
 
-    const response = rxImpl[name](observable, call.metadata);
+    const response = rxImpl[name](observable, call);
     if (serviceMethod.responseStream) {
       dbg(() => 'responseStream');
+      call.once('cancelled', () => {
+        call.end();
+      });
       await response.forEach(data => call.write(data));
       call.end();
     } else {
@@ -65,5 +79,8 @@ function createMethod(rxImpl, name, methods, dbg) {
 
 module.exports = {
   create,
-  createMethod
+  createMethod,
+  errors: {
+    CanceledError
+  }
 };

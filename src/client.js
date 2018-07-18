@@ -87,7 +87,7 @@ function createMethod(clientMethod, dbg, cancelCache) {
         };
 
         const onEnd = cb => {
-          observer.complete();
+          grpcComplete();
           cb();
           call.removeListener('error', onError);
         };
@@ -124,10 +124,16 @@ function createMethod(clientMethod, dbg, cancelCache) {
         return console.warn('Observable.grpcCancel already exists');
       }
 
+      function grpcComplete() {
+        dbg(() => 'complete');
+        cancelCache.delete(grpcCancel);
+        observer.complete();
+      }
+
       function grpcCancel() {
         dbg(() => 'canceled');
-        call.cancel();
         cancelCache.delete(grpcCancel);
+        call.cancel();
       }
       if (call.cancel) {
         cancelCache.add(grpcCancel);

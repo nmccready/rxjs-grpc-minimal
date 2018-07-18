@@ -112,21 +112,41 @@ function runSuite({ initServer, reply }, serverName) {
               });
             });
 
-            it.only('cancelCache is empty upon completion', () => {
-              makeCall();
-              return callObs.forEach(resp => {}).then(() => {
-                expect(grpcAPI.cancelCache.size).to.be.equal(1);
-                // callObs.grpcCancel();
-                // expect(Object.keys(grpcAPI.cancelCache).length).to.be.equal(0);
+            it.only('cancelCache is empty upon completion', done => {
+              makeCall(true); // complete!
+              return callObs.subscribe({
+                next() {
+                  console.log('called next');
+                },
+                error: done,
+                complete() {
+                  expect(grpcAPI.cancelCache.size).to.be.equal(0);
+                  done();
+                }
               });
             });
 
-            it('cancelCache is cleaned on cancel (when un-completed)', () => {
+            it.only('cancelCache is cleaned on cancel (when un-completed)', (done) => {
               makeCall(false);
-              return callObs.forEach(resp => {}).then(() => {
-                expect(grpcAPI.cancelCache.size).to.be.equal(1);
-                callObs.grpcCancel();
-                expect(grpcAPI.cancelCache.size).to.be.equal(0);
+              return callObs.subscribe({
+                next() {
+                  expectedCalls--;
+                  console.log('called next');
+                  if (expectedCalls === 0) {
+                    callObs.grpcCancel();
+                  }
+                  // callObs.grpcCancel();
+                  // expect(Object.keys(grpcAPI.cancelCache).length).to.be.equal(0);
+                },
+                error: (cancelError) => {
+                  // we full expect the cancel error
+                  console.log(cancelError.message);
+                  expect(grpcAPI.cancelCache.size).to.be.equal(0);
+                  done();
+                },
+                complete() {
+                  throw new Error('should not complete');
+                }
               });
             });
           });

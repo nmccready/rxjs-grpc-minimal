@@ -19,8 +19,8 @@ message HelloRequest {
 // The request message containing the user's name and how many greetings they want.
 message MultiHelloRequest {
   string name = 1;
-  required uint32 num_greetings = 2;
-  bool doComplete = 3;
+  uint32 num_greetings = 2;
+  bool do_complete = 3;
 }
 
 // The response message containing the greetings.
