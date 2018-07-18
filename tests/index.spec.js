@@ -194,7 +194,7 @@ function runSuite({ initServer, reply }, serverName) {
                 });
             });
 
-            it.only('Subject - post streaming', () => {
+            it('Subject - post streaming', () => {
               const name = 'Subject';
               const writer = new Subject();
               const observable = conn.streamSayHelloRx(writer);
