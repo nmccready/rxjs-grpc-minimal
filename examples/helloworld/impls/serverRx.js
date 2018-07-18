@@ -17,18 +17,15 @@ function mockService() {
         observer.complete();
       });
     },
-    sayMultiHello: function(
-      { value: { name, numGreetings, doComplete = true } },
-      call
-    ) {
+    sayMultiHello: function({
+      value: { name, numGreetings, doComplete = true }
+    }) {
       return Observable.create(observer => {
         numGreetings = numGreetings || 1;
         while (--numGreetings >= 0) {
           observer.next({ message: reply(name) });
         }
-        call.once('cancelled', () => {
-          observer.complete();
-        });
+
         if (doComplete) {
           // we do not always need to complete
           // sometimes we want to stream data until canceled or

@@ -16,6 +16,8 @@ const protPath = getProtoPath(__dirname)(
 const URI = '127.0.0.1:56001';
 const servers = { server, serverRx };
 
+const debug = require('../debug').spawn('test:index');
+
 for (const name in servers) {
   runSuite(servers[name], name);
 }
@@ -23,6 +25,7 @@ for (const name in servers) {
 function runSuite({ initServer, reply }, serverName) {
   describe(`Rx helloworld with ${serverName}`, () => {
     let grpcAPI, initServerPayload, conn;
+    let junkId = 0;
 
     describe('grpc client', () => {
       beforeEach(() => {
@@ -40,9 +43,12 @@ function runSuite({ initServer, reply }, serverName) {
           serviceName: 'Greeter'
         });
 
+        junkId++;
+
         conn = new initServerPayload.GrpcService(
           URI,
-          credentials.createInsecure()
+          credentials.createInsecure(),
+          { junkId } // cache break connection
         );
       });
 
@@ -82,10 +88,12 @@ function runSuite({ initServer, reply }, serverName) {
 
           describe('stream reply', () => {
             let callObs, name;
-            let expectedCalls = 2;
+            let expectedCalls;
 
             function makeCall(doComplete = true) {
+              expectedCalls = 2;
               name = 'Brody';
+
               callObs = conn.sayMultiHelloRx({
                 name,
                 numGreetings: expectedCalls,
@@ -94,7 +102,7 @@ function runSuite({ initServer, reply }, serverName) {
             }
 
             it('works', () => {
-              makeCall();
+              makeCall(true);
               return callObs
                 .forEach(resp => {
                   expect(resp).to.deep.equal({
@@ -102,7 +110,10 @@ function runSuite({ initServer, reply }, serverName) {
                   });
                   expectedCalls--;
                 })
-                .then(() => expect(expectedCalls).to.equal(0));
+                .then(() => {
+                  expect(grpcAPI.cancelCache.size).to.be.equal(0);
+                  expect(expectedCalls).to.equal(0);
+                });
             });
 
             it('has .grpcCancel', () => {
@@ -116,7 +127,7 @@ function runSuite({ initServer, reply }, serverName) {
               makeCall(true); // complete!
               return callObs.subscribe({
                 next() {
-                  console.log('called next');
+                  debug(() => 'called next');
                 },
                 error: done,
                 complete() {
@@ -126,21 +137,21 @@ function runSuite({ initServer, reply }, serverName) {
               });
             });
 
-            it('cancelCache is cleaned on cancel (when un-completed)', (done) => {
+            it('cancelCache is cleaned on cancel (when un-completed)', done => {
               makeCall(false);
               return callObs.subscribe({
                 next() {
                   expectedCalls--;
-                  console.log('called next');
+                  debug(() => 'called next');
                   if (expectedCalls === 0) {
                     callObs.grpcCancel();
                   }
                   // callObs.grpcCancel();
                   // expect(Object.keys(grpcAPI.cancelCache).length).to.be.equal(0);
                 },
-                error: (cancelError) => {
+                error: cancelError => {
                   // we full expect the cancel error
-                  console.log(cancelError.message);
+                  debug(() => cancelError.message);
                   expect(grpcAPI.cancelCache.size).to.be.equal(0);
                   done();
                 },
