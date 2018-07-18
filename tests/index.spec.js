@@ -150,6 +150,8 @@ function runSuite({ initServer, reply }, serverName) {
               const callObs = makeCall(false);
               return callObs.subscribe({
                 next() {
+                  expect(callObs.grpcCancel).to.be.ok;
+                  expect(grpcAPI.cancelCache.size).to.be.eql(1);
                   expectedCalls--;
                   debug(() => 'called next');
                   if (expectedCalls === 0) {
@@ -170,51 +172,61 @@ function runSuite({ initServer, reply }, serverName) {
               });
             });
           });
+          describe('streamed request', () => {
+            it('ReplaySubject - streamed | completed ahead of consumption', () => {
+              const name = 'ReplaySubject';
+              const writer = new ReplaySubject();
+              const observable = conn.streamSayHelloRx(writer);
 
-          it('streamish - ReplaySubject', () => {
-            const name = 'ReplaySubject';
-            const writer = new ReplaySubject();
-            const observable = conn.streamSayHelloRx(writer);
+              writer.next({ name }); // buffered for replay!
+              writer.complete();
 
-            writer.next({ name }); // buffered for replay!
-            writer.complete();
+              // internal observable actually loads into memory now!
+              return observable
+                .forEach(resp => {
+                  expect(observable.grpcCancel).to.not.be.ok;
+                  expect(grpcAPI.cancelCache.size).to.be.eql(0);
+                  expect(resp).to.deep.equal({ message: reply(name) });
+                })
+                .then(() => {
+                  expect(grpcAPI.cancelCache.size).to.be.eql(0);
+                  writer.unsubscribe();
+                });
+            });
 
-            // internal observable actually loads into memory now!
-            return observable
-              .forEach(resp => {
-                expect(resp).to.deep.equal({ message: reply(name) });
-              })
-              .then(() => {
-                writer.unsubscribe();
-              });
-          });
+            it.only('Subject - post streaming', () => {
+              const name = 'Subject';
+              const writer = new Subject();
+              const observable = conn.streamSayHelloRx(writer);
 
-          it('streamish - Subject', () => {
-            const name = 'Subject';
-            const writer = new Subject();
-            const observable = conn.streamSayHelloRx(writer);
+              const promise = observable
+                .forEach(resp => {
+                  expect(resp).to.deep.equal({ message: reply(name) });
+                })
+                .then(() => {
+                  writer.unsubscribe();
+                });
 
-            const promise = observable
-              .forEach(resp => {
-                expect(resp).to.deep.equal({ message: reply(name) });
-              })
-              .then(() => {
-                writer.unsubscribe();
-              });
-            // ok we're now subscribed
-            writer.next({ name });
-            writer.complete();
+              expect(observable.grpcCancel).to.be.ok;
+              expect(grpcAPI.cancelCache.size).to.be.eql(1);
+              // ok we're now subscribed
+              writer.next({ name });
+              writer.complete();
 
-            return promise;
-          });
+              expect(grpcAPI.cancelCache.size).to.be.eql(0);
 
-          it('streamish - of', () => {
-            const name = 'of';
-            return conn
-              .streamSayHelloRx(Observable.of({ name }))
-              .forEach(resp => {
-                expect(resp).to.deep.equal({ message: reply(name) });
-              });
+              return promise;
+            });
+
+            it('streamish - of', () => {
+              const name = 'of';
+              return conn
+                .streamSayHelloRx(Observable.of({ name }))
+                .forEach(resp => {
+                  expect(grpcAPI.cancelCache.size).to.be.eql(0);
+                  expect(resp).to.deep.equal({ message: reply(name) });
+                });
+            });
           });
         });
       });

@@ -96,6 +96,8 @@ function createMethod(clientMethod, dbg, cancelCache) {
         call.on('error', onError);
       }
 
+      let requestStreamCompleted = false;
+
       if (clientMethod.requestStream) {
         const d = dbg.spawn('requestStream');
         const observable = args[0];
@@ -116,7 +118,8 @@ function createMethod(clientMethod, dbg, cancelCache) {
             grpcCancel();
           },
           complete: () => {
-            call.end();
+            requestStreamCompleted = true;
+            grpcComplete(() => call.end());
           }
         });
       }
@@ -124,10 +127,10 @@ function createMethod(clientMethod, dbg, cancelCache) {
         return console.warn('Observable.grpcCancel already exists');
       }
 
-      function grpcComplete() {
+      function grpcComplete(cb) {
         dbg(() => 'complete');
         cancelCache.delete(grpcCancel);
-        observer.complete();
+        cb ? cb() : observer.complete();
       }
 
       function grpcCancel() {
@@ -135,7 +138,11 @@ function createMethod(clientMethod, dbg, cancelCache) {
         cancelCache.delete(grpcCancel);
         call.cancel();
       }
-      if (call.cancel && (clientMethod.responseStream || clientMethod.requestStream)) {
+      if (
+        call.cancel &&
+        (clientMethod.responseStream ||
+          (clientMethod.requestStream && !requestStreamCompleted))
+      ) {
         cancelCache.add(grpcCancel);
         retObs.grpcCancel = grpcCancel;
       }
