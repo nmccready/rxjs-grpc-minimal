@@ -25,7 +25,6 @@ for (const name in servers) {
 function runSuite({ initServer, reply }, serverName) {
   describe(`Rx helloworld with ${serverName}`, () => {
     let grpcAPI, initServerPayload, conn;
-    let junkId = 0;
 
     describe('grpc client', () => {
       beforeEach(() => {
@@ -43,12 +42,9 @@ function runSuite({ initServer, reply }, serverName) {
           serviceName: 'Greeter'
         });
 
-        junkId++;
-
         conn = new initServerPayload.GrpcService(
           URI,
-          credentials.createInsecure(),
-          { junkId } // cache break connection
+          credentials.createInsecure()
         );
       });
 
