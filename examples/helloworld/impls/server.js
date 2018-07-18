@@ -48,10 +48,11 @@ function mockService() {
         client.write({ message: reply(name) });
       }
       dbg('end');
+      client.once('cancelled', () =>
+        client.end());
       if (doComplete) {
         client.end();
       }
-      client.once('cancelled', client.end);
 
       /* eslint-enable camelcase */
     }

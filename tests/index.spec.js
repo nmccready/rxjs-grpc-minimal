@@ -112,7 +112,7 @@ function runSuite({ initServer, reply }, serverName) {
               });
             });
 
-            it.only('cancelCache is empty upon completion', done => {
+            it('cancelCache is empty upon completion', done => {
               makeCall(true); // complete!
               return callObs.subscribe({
                 next() {
@@ -126,7 +126,7 @@ function runSuite({ initServer, reply }, serverName) {
               });
             });
 
-            it.only('cancelCache is cleaned on cancel (when un-completed)', (done) => {
+            it('cancelCache is cleaned on cancel (when un-completed)', (done) => {
               makeCall(false);
               return callObs.subscribe({
                 next() {

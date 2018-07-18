@@ -48,6 +48,8 @@ function createMethod(rxImpl, name, methods, dbg) {
               observer.cancelled(SomeObject|String);
 
               I would love to hear other ideas.
+
+              NOTE: grpc-node emits cancel errors so I guess we should follow this.
               */
               observer.error(new CanceledError(`Call to "${name}" cancelled.`));
             } else {
