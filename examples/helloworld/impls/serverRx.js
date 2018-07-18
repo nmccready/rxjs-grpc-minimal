@@ -17,13 +17,15 @@ function mockService() {
         observer.complete();
       });
     },
-    sayMultiHello({ value: { name, numGreetings } }) {
+    sayMultiHello({ value: { name, numGreetings, doComplete = true } }) {
       return Observable.create(observer => {
         numGreetings = numGreetings || 1;
         while (--numGreetings >= 0) {
           observer.next({ message: reply(name) });
         }
-        observer.complete();
+        if (doComplete) {
+          observer.complete();
+        }
       });
       /* eslint-enable camelcase */
     }

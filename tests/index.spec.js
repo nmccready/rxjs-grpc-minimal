@@ -80,18 +80,55 @@ function runSuite({ initServer, reply }, serverName) {
             });
           });
 
-          it('stream reply', () => {
-            const name = 'Brody';
+          describe('stream reply', () => {
+            let callObs, name;
             let expectedCalls = 2;
-            return conn
-              .sayMultiHelloRx({ name, numGreetings: String(expectedCalls) })
-              .forEach(resp => {
-                expect(resp).to.deep.equal({
-                  message: reply(name)
-                });
-                expectedCalls--;
-              })
-              .then(() => expect(expectedCalls).to.equal(0));
+
+            function makeCall(doComplete = true) {
+              name = 'Brody';
+              callObs = conn.sayMultiHelloRx({
+                name,
+                numGreetings: expectedCalls,
+                doComplete
+              });
+            }
+
+            it('works', () => {
+              makeCall();
+              return callObs
+                .forEach(resp => {
+                  expect(resp).to.deep.equal({
+                    message: reply(name)
+                  });
+                  expectedCalls--;
+                })
+                .then(() => expect(expectedCalls).to.equal(0));
+            });
+
+            it('has .grpcCancel', () => {
+              makeCall();
+              return callObs.forEach(resp => {}).then(() => {
+                expect(callObs.grpcCancel).to.be.ok;
+              });
+            });
+
+            it.only('cancelCache is empty upon completion', () => {
+              makeCall();
+              return callObs.forEach(resp => {}).then(() => {
+                expect(grpcAPI.cancelCache.size).to.be.equal(1);
+                // callObs.grpcCancel();
+                // expect(Object.keys(grpcAPI.cancelCache).length).to.be.equal(0);
+              });
+            });
+
+            it('cancelCache is cleaned on cancel (when un-completed)', () => {
+              makeCall(false);
+              return callObs.forEach(resp => {}).then(() => {
+                expect(grpcAPI.cancelCache.size).to.be.equal(1);
+                callObs.grpcCancel();
+                expect(grpcAPI.cancelCache.size).to.be.equal(0);
+              });
+            });
           });
 
           it('streamish - ReplaySubject', () => {

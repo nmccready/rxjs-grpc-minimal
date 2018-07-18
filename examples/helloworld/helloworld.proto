@@ -20,6 +20,7 @@ message HelloRequest {
 message MultiHelloRequest {
   string name = 1;
   required uint32 num_greetings = 2;
+  bool doComplete = 3;
 }
 
 // The response message containing the greetings.
