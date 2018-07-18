@@ -75,22 +75,31 @@ function runSuite({ initServer, reply }, serverName) {
         });
 
         describe('Greeter', () => {
-          it('non stream', () => {
-            const name = 'Bob';
-            return conn.sayHelloRx({ name }).forEach(resp => {
-              expect(resp).to.deep.equal({ message: reply(name) });
+          describe('non stream', () => {
+            it('works', () => {
+              const name = 'Bob';
+              const obs = conn.sayHelloRx({ name });
+              return obs
+                .forEach(resp => {
+                  expect(obs.grpcCancel).to.not.be.ok;
+                  expect(grpcAPI.cancelCache.size).to.be.eql(0);
+                  expect(resp).to.deep.equal({ message: reply(name) });
+                })
+                .then(() => {
+                  expect(grpcAPI.cancelCache.size).to.be.eql(0);
+                });
             });
           });
 
           describe('stream reply', () => {
-            let callObs, name;
+            let name;
             let expectedCalls;
 
             function makeCall(doComplete = true) {
               expectedCalls = 2;
               name = 'Brody';
 
-              callObs = conn.sayMultiHelloRx({
+              return conn.sayMultiHelloRx({
                 name,
                 numGreetings: expectedCalls,
                 doComplete
@@ -98,9 +107,11 @@ function runSuite({ initServer, reply }, serverName) {
             }
 
             it('works', () => {
-              makeCall(true);
+              const callObs = makeCall(true);
               return callObs
                 .forEach(resp => {
+                  expect(callObs.grpcCancel).to.be.ok;
+                  expect(grpcAPI.cancelCache.size).to.be.eql(1);
                   expect(resp).to.deep.equal({
                     message: reply(name)
                   });
@@ -113,16 +124,18 @@ function runSuite({ initServer, reply }, serverName) {
             });
 
             it('has .grpcCancel', () => {
-              makeCall();
+              const callObs = makeCall();
               return callObs.forEach(resp => {}).then(() => {
                 expect(callObs.grpcCancel).to.be.ok;
               });
             });
 
             it('cancelCache is empty upon completion', done => {
-              makeCall(true); // complete!
+              const callObs = makeCall(true); // complete!
               return callObs.subscribe({
                 next() {
+                  expect(callObs.grpcCancel).to.be.ok;
+                  expect(grpcAPI.cancelCache.size).to.be.eql(1);
                   debug(() => 'called next');
                 },
                 error: done,
@@ -134,7 +147,7 @@ function runSuite({ initServer, reply }, serverName) {
             });
 
             it('cancelCache is cleaned on cancel (when un-completed)', done => {
-              makeCall(false);
+              const callObs = makeCall(false);
               return callObs.subscribe({
                 next() {
                   expectedCalls--;

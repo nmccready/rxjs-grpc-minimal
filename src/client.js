@@ -135,7 +135,7 @@ function createMethod(clientMethod, dbg, cancelCache) {
         cancelCache.delete(grpcCancel);
         call.cancel();
       }
-      if (call.cancel) {
+      if (call.cancel && (clientMethod.responseStream || clientMethod.requestStream)) {
         cancelCache.add(grpcCancel);
         retObs.grpcCancel = grpcCancel;
       }
