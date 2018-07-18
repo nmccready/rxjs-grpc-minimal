@@ -15,10 +15,10 @@ function create(grpcApi, methExt = 'Rx') {
     This is a way to expose the underlying call.cancel(s) so that
     a underlying channel can be truly cleaned up.
 
-    If a call is not canceled and Client.close is called the underlying
+    If a call is not canceled and Client.close is called, the underlying
     subchannel will hold on to it's reference and leak observers on the server.
 
-    Therefore in some cases we need to clean up all cancelables when cleaning
+    Therefore in some cases we need to clean up all cancellables when cleaning
     connections.
 
     TODO: Call all cancels and clearCancel cache upon client.close.

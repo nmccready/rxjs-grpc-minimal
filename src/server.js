@@ -62,7 +62,7 @@ function createMethod(rxImpl, name, methods, dbg) {
       });
     }
 
-    const response = rxImpl[name](observable, call);
+    const response = rxImpl[name](observable, call.metadata);
     if (serviceMethod.responseStream) {
       dbg(() => 'responseStream');
       call.once('cancelled', () => {
