@@ -17,13 +17,21 @@ function mockService() {
         observer.complete();
       });
     },
-    sayMultiHello({ value: { name, numGreetings } }) {
+    sayMultiHello: function({
+      value: { name, numGreetings, doComplete = true }
+    }) {
       return Observable.create(observer => {
         numGreetings = numGreetings || 1;
         while (--numGreetings >= 0) {
           observer.next({ message: reply(name) });
         }
-        observer.complete();
+
+        if (doComplete) {
+          // we do not always need to complete
+          // sometimes we want to stream data until canceled or
+          // told to stop by the application
+          observer.complete();
+        }
       });
       /* eslint-enable camelcase */
     }

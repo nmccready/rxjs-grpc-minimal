@@ -1,5 +1,6 @@
 const { Observable } = require('rxjs');
 const though2 = require('through2');
+
 const { getServiceNames } = require('../src/utils');
 
 const debug = require('../debug').spawn('client');
@@ -8,6 +9,24 @@ const debug = require('../debug').spawn('client');
  * @param  {String} methExt - your choice to extend or override the methodNames
  */
 function create(grpcApi, methExt = 'Rx') {
+  /*
+    cancelCache
+
+    This is a way to expose the underlying call.cancel(s) so that
+    a underlying channel can be truly cleaned up.
+
+    If a call is not canceled and Client.close is called, the underlying
+    subchannel will hold on to it's reference and leak observers on the server.
+
+    Therefore in some cases we need to clean up all cancellables when cleaning
+    connections.
+
+    TODO: Call all cancels and clearCancel cache upon client.close.
+    Therefore wrap.close for all ServiceClient(s).
+  */
+  const cancelCache = new Set(); // this might need to be call cache
+  grpcApi.cancelCache = cancelCache;
+
   for (const name of getServiceNames(grpcApi)) {
     const service = grpcApi[name];
     const dbg = debug.spawn(name);
@@ -18,7 +37,8 @@ function create(grpcApi, methExt = 'Rx') {
       }
       service.prototype[`${methName}${methExt}`] = createMethod(
         origFn,
-        dbg.spawn(methName)
+        dbg.spawn(methName),
+        cancelCache
       );
     }
   }
@@ -26,14 +46,14 @@ function create(grpcApi, methExt = 'Rx') {
   return grpcApi;
 }
 
-function createMethod(clientMethod, dbg) {
+function createMethod(clientMethod, dbg, cancelCache) {
   function rxWrapper(...args) {
     dbg(() => 'called');
     /* NOTE: BE AWARE
     This Observable is lazy! So know what kind of observers your passing in!
     Subject / vs ReplaySubject might miss some entities!
     */
-    return new Observable(observer => {
+    const retObs = new Observable(observer => {
       const handler = (error, data) => {
         const d = dbg.spawn('handler');
         if (error) {
@@ -67,7 +87,7 @@ function createMethod(clientMethod, dbg) {
         };
 
         const onEnd = cb => {
-          observer.complete();
+          grpcComplete();
           cb();
           call.removeListener('error', onError);
         };
@@ -93,15 +113,35 @@ function createMethod(clientMethod, dbg) {
           },
           error: () => {
             d(() => 'error canceling');
-            call.cancel();
+            grpcCancel();
           },
           complete: () => {
             call.end();
           }
         });
       }
+      if (retObs.grpcCancel) {
+        return console.warn('Observable.grpcCancel already exists');
+      }
+
+      function grpcComplete() {
+        dbg(() => 'complete');
+        cancelCache.delete(grpcCancel);
+        observer.complete();
+      }
+
+      function grpcCancel() {
+        dbg(() => 'canceled');
+        cancelCache.delete(grpcCancel);
+        call.cancel();
+      }
+      if (call.cancel) {
+        cancelCache.add(grpcCancel);
+        retObs.grpcCancel = grpcCancel;
+      }
     });
-  };
+    return retObs;
+  }
   // copy over useful fields like, requestStream, responseStream etc..
   Object.assign(rxWrapper, clientMethod);
   return rxWrapper;

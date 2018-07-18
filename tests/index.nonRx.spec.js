@@ -70,29 +70,75 @@ describe('helloworld', () => {
           });
         });
 
-        it('stream reply', done => {
-          const name = 'Brody';
-          let expectedCalls = 2;
-          conn
-            .sayMultiHello({ name, numGreetings: String(expectedCalls) })
-            .once('error', done)
-            .once('status', stat => {
-              debug(() => ({ stat }));
-            })
-            .pipe(through2.obj(onData));
+        describe('stream reply', () => {
+          it('completes', done => {
+            const name = 'Brody';
+            let expectedCalls = 2;
+            conn
+              .sayMultiHello({
+                name,
+                numGreetings: String(expectedCalls),
+                doComplete: true
+              })
+              .once('error', error => done(error))
+              .once('status', stat => {
+                debug(() => ({ stat }));
+              })
+              .pipe(through2.obj(onData));
 
-          function onData(resp, enc, cb) {
-            debug({ resp });
-            expect(resp).to.deep.equal({
-              message: reply(name)
-            });
-            expectedCalls--;
-            cb();
-            if (!expectedCalls) {
-              done();
+            function onData(resp, enc, cb) {
+              debug({ resp });
+              expect(resp).to.deep.equal({
+                message: reply(name)
+              });
+              expectedCalls--;
+              cb();
+              if (!expectedCalls) {
+                done();
+              }
             }
-          }
+          });
+
+          it('does not complete', done => {
+            const name = 'Brody';
+            let completed = false;
+            let call; // eslint-disable-line
+
+            setTimeout(() => {
+              call.cancel();
+            }, 200);
+
+            call = conn.sayMultiHello({
+              name,
+              numGreetings: 1,
+              doComplete: false
+            });
+
+            call
+              .once('error', canceledObj => {
+                done(completed ? 'SHOULD NOT COMPLETE' : undefined);
+              })
+              .once('status', stat => {
+                debug(() => ({ stat }));
+              })
+              .pipe(
+                through2.obj(onData, cb => {
+                  completed = true;
+                  done('SHOULD NOT COMPLETE');
+                  cb();
+                })
+              );
+
+            function onData(resp, enc, cb) {
+              debug({ resp });
+              expect(resp).to.deep.equal({
+                message: reply(name)
+              });
+              cb();
+            }
+          });
         });
+
         it('streamish (entire req message is buffered) request, non-stream reply', done => {
           const name = 'STREAM';
           const stream = conn

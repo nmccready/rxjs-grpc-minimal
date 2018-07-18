@@ -16,6 +16,8 @@ const protPath = getProtoPath(__dirname)(
 const URI = '127.0.0.1:56001';
 const servers = { server, serverRx };
 
+const debug = require('../debug').spawn('test:index');
+
 for (const name in servers) {
   runSuite(servers[name], name);
 }
@@ -80,18 +82,80 @@ function runSuite({ initServer, reply }, serverName) {
             });
           });
 
-          it('stream reply', () => {
-            const name = 'Brody';
-            let expectedCalls = 2;
-            return conn
-              .sayMultiHelloRx({ name, numGreetings: String(expectedCalls) })
-              .forEach(resp => {
-                expect(resp).to.deep.equal({
-                  message: reply(name)
+          describe('stream reply', () => {
+            let callObs, name;
+            let expectedCalls;
+
+            function makeCall(doComplete = true) {
+              expectedCalls = 2;
+              name = 'Brody';
+
+              callObs = conn.sayMultiHelloRx({
+                name,
+                numGreetings: expectedCalls,
+                doComplete
+              });
+            }
+
+            it('works', () => {
+              makeCall(true);
+              return callObs
+                .forEach(resp => {
+                  expect(resp).to.deep.equal({
+                    message: reply(name)
+                  });
+                  expectedCalls--;
+                })
+                .then(() => {
+                  expect(grpcAPI.cancelCache.size).to.be.equal(0);
+                  expect(expectedCalls).to.equal(0);
                 });
-                expectedCalls--;
-              })
-              .then(() => expect(expectedCalls).to.equal(0));
+            });
+
+            it('has .grpcCancel', () => {
+              makeCall();
+              return callObs.forEach(resp => {}).then(() => {
+                expect(callObs.grpcCancel).to.be.ok;
+              });
+            });
+
+            it('cancelCache is empty upon completion', done => {
+              makeCall(true); // complete!
+              return callObs.subscribe({
+                next() {
+                  debug(() => 'called next');
+                },
+                error: done,
+                complete() {
+                  expect(grpcAPI.cancelCache.size).to.be.equal(0);
+                  done();
+                }
+              });
+            });
+
+            it('cancelCache is cleaned on cancel (when un-completed)', done => {
+              makeCall(false);
+              return callObs.subscribe({
+                next() {
+                  expectedCalls--;
+                  debug(() => 'called next');
+                  if (expectedCalls === 0) {
+                    callObs.grpcCancel();
+                  }
+                  // callObs.grpcCancel();
+                  // expect(Object.keys(grpcAPI.cancelCache).length).to.be.equal(0);
+                },
+                error: cancelError => {
+                  // we full expect the cancel error
+                  debug(() => cancelError.message);
+                  expect(grpcAPI.cancelCache.size).to.be.equal(0);
+                  done();
+                },
+                complete() {
+                  throw new Error('should not complete');
+                }
+              });
+            });
           });
 
           it('streamish - ReplaySubject', () => {
