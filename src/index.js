@@ -1,5 +1,9 @@
+const server = require('./server');
 module.exports = {
-  toRxServer: require('./server').create,
+  toRxServer: server.create,
   toRxClient: require('./client').create,
-  utils: require('./utils')
+  utils: require('./utils'),
+  errors: {
+    server: server.errors
+  }
 };

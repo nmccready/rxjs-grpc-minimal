@@ -35,6 +35,7 @@
     "eslint-plugin-promise": "^3.7.0",
     "eslint-plugin-standard": "^3.0.1",
     "grpc": "^1.13",
+    "lodash": "^4.17.10",
     "mocha": "^5.1.1",
     "prettier": "^1",
     "prettier-eslint": "^8",
