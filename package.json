@@ -1,10 +1,17 @@
 {
   "main": "src/index",
   "name": "rxjs-grpc-minimal",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "grpc node callback and streams wrapped in observables",
   "license": "MIT",
-  "keywords": ["rxjs", "grpc", "protobuf", "protobuffers", "reactive", "proto"],
+  "keywords": [
+    "rxjs",
+    "grpc",
+    "protobuf",
+    "protobuffers",
+    "reactive",
+    "proto"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/nmccready/rxjs-grpc-minimal.git"
