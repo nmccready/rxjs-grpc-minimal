@@ -48,7 +48,7 @@ function create(grpcApi, methExt = 'Rx') {
 
 function createMethod(clientMethod, dbg, cancelCache) {
   function rxWrapper(...args) {
-    dbg(() => 'called');
+    dbg(() => ({ args }));
     /* NOTE: BE AWARE
     This Observable is lazy! So know what kind of observers your passing in!
     Subject / vs ReplaySubject might miss some entities!
@@ -101,7 +101,7 @@ function createMethod(clientMethod, dbg, cancelCache) {
       if (clientMethod.requestStream) {
         const d = dbg.spawn('requestStream');
         const observable = args[0];
-        /* ducktyping , tried intanceof and it is not reliable */
+        /* duck-typing , tried instanceof and it is not reliable */
         if (!observable || !observable.subscribe || !observable.forEach) {
           return observer.error(
             new Error('Observable required to subscribe to')
