@@ -48,8 +48,7 @@ function mockService() {
         client.write({ message: reply(name) });
       }
       dbg('end');
-      client.once('cancelled', () =>
-        client.end());
+      client.once('cancelled', () => client.end());
       if (doComplete) {
         client.end();
       }
@@ -59,19 +58,9 @@ function mockService() {
   };
 }
 
-function initServer({ uri, grpcAPI, serviceName }) {
-  const server = new Server();
-  const GrpcService = grpcAPI[serviceName];
-
-  server.bind(uri, ServerCredentials.createInsecure());
-  server.addService(GrpcService.service, mockService());
-  server.start();
-
-  return {
-    server,
-    GrpcService
-  };
-}
+const initServer = require('../../../src/utils/testHelpers/server').initServer(
+  mockService
+);
 
 function reply(name) {
   return `Hello ${name}!`;

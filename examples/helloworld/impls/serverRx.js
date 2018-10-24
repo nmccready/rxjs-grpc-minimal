@@ -1,6 +1,4 @@
-const { Server, ServerCredentials } = require('grpc');
 const { Observable } = require('rxjs');
-const { toRxServer } = require('../../../src');
 
 function mockService() {
   sayMultiHello.holdingObservers = new Set();
@@ -53,24 +51,9 @@ function mockService() {
   }
 }
 
-function initServer({ uri, grpcAPI, serviceName }) {
-  const server = new Server();
-  const GrpcService = grpcAPI[serviceName];
-  const impl = mockService();
-
-  server.bind(uri, ServerCredentials.createInsecure());
-  server.addService(
-    GrpcService.service,
-    toRxServer(GrpcService, impl, serviceName)
-  );
-  server.start();
-
-  return {
-    server,
-    GrpcService,
-    impl
-  };
-}
+const initServer = require('../../../src/utils/testHelpers/serverRx').initServer(
+  mockService
+);
 
 function reply(name) {
   return `Hello ${name}!`;
