@@ -59,7 +59,7 @@ describe(`client`, () => {
       }
 
       it.only('rxWrapper is called once', () => {
-        const { impl, server } = initServerPayload;
+        const { server } = initServerPayload;
         makeCall();
         expect(conn.sayMultiHelloRx.calledOnce).to.be.ok;
         conn.close();
