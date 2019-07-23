@@ -45,10 +45,8 @@ describe(`client`, () => {
 
     describe('stream reply', () => {
       let name;
-      let expectedCalls;
 
-      function makeCall(doComplete = true) {
-        expectedCalls = 2;
+      function makeCall(doComplete = true, expectedCalls = 2) {
         name = 'Brody';
 
         return conn.sayMultiHelloRx({
@@ -89,6 +87,42 @@ describe(`client`, () => {
             conn.close();
             server.forceShutdown();
           }
+        });
+      });
+
+      describe.only('unsubscribe', () => {
+        it('queueing many calls and unsubscribe early', done => {
+          const { impl, server } = initServerPayload;
+          const callObs = makeCall(false, 10);
+
+          let nextCalls = 0;
+          const delay = 100;
+          const expectedCalls = 2;
+
+          const ret = callObs.delay(delay).subscribe({
+            next: () => {
+              expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(1);
+              nextCalls++;
+            },
+            error: maybeError => {
+              done(maybeError);
+            },
+            complete: () => {
+              setTimeout(() => {
+                expect(nextCalls).to.be.eql();
+                expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0);
+                expect(grpcAPI.cancelCache.size).to.be.eql(0);
+                done();
+              }, 50);
+              conn.close();
+              server.forceShutdown();
+            }
+          });
+
+          // wait an amount of time to get some expected calls
+          setTimeout(() => {
+            ret.unsubscribe();
+          }, delay * expectedCalls + 25);
         });
       });
     });
