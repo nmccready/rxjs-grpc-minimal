@@ -14,7 +14,7 @@ const protPath = getProtoPath(__dirname)(
   '../examples/helloworld/helloworld.proto'
 );
 const URI = '127.0.0.1:56001';
-// const debug = require('../debug').spawn('test:index');
+const debug = require('../debug').spawn('test:index');
 
 describe(`client`, () => {
   let grpcAPI, initServerPayload, conn;
@@ -46,13 +46,14 @@ describe(`client`, () => {
     describe('stream reply', () => {
       let name;
 
-      function makeCall(doComplete = true, expectedCalls = 2) {
+      function makeCall(doComplete = true, expectedCalls = 2, delayMs) {
         name = 'Brody';
 
         return conn.sayMultiHelloRx({
           name,
           numGreetings: expectedCalls,
-          doComplete
+          doComplete,
+          delayMs
         });
       }
 
@@ -90,22 +91,22 @@ describe(`client`, () => {
         });
       });
 
-      describe.only('unsubscribe', () => {
+      describe('unsubscribe', () => {
         it('queueing many calls and unsubscribe early', done => {
           const { impl, server } = initServerPayload;
-          const callObs = makeCall(false, 10);
-
           let nextCalls = 0;
-          const delay = 25;
-          const expectedCalls = 2;
+          const delayMs = 100;
 
-          const ret = callObs.delay(delay).subscribe({
+          const callObs = makeCall(false, 10, delayMs);
+
+          const ret = callObs.subscribe({
             next: () => {
+              debug(() => `called ${nextCalls}`);
               expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(1);
               nextCalls++;
             },
             error: maybeError => {
-              // done(maybeError);
+              done(maybeError);
             },
             complete: () => {
               // we should unsub before getting a completion
@@ -116,17 +117,18 @@ describe(`client`, () => {
           // wait an amount of time to get some expected calls
           setTimeout(() => {
             ret.unsubscribe();
+            debug(() => 'unsubscribed !!!!!!!!!!!!!!!!!');
 
+            expect(nextCalls).to.not.be.eql(10);
             setTimeout(() => {
-              expect(nextCalls).to.be.eql(expectedCalls);
-              // expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0);
-              // expect(grpcAPI.cancelCache.size).to.be.eql(0);
+              expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0);
+              expect(grpcAPI.cancelCache.size).to.be.eql(0);
               done();
-            }, 50);
+            }, 20);
 
             conn.close();
             server.forceShutdown(done);
-          }, delay * expectedCalls);
+          }, 10);
         });
       });
     });

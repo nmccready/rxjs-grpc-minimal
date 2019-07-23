@@ -104,7 +104,8 @@ function createMethod(clientMethod, dbg, cancelCache) {
 
         const originalUnsub = observer.unsubscribe;
         observer.unsubscribe = function(...args) {
-          // call.removeListener('error', onError);
+          grpcCancel();
+          call.removeListener('error', onError);
           originalUnsub.apply(observer, args);
           call.destroy();
         };
@@ -147,10 +148,10 @@ function createMethod(clientMethod, dbg, cancelCache) {
         cb ? cb() : observer.complete();
       }
 
-      function grpcCancel() {
+      function grpcCancel(doCancel = true) {
         dbg(() => 'canceled');
         cancelCache.delete(grpcCancel);
-        call.cancel();
+        if (doCancel) call.cancel();
       }
       if (
         call.cancel &&

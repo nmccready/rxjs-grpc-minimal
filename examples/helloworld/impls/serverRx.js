@@ -23,14 +23,23 @@ function mockService() {
   function sayMultiHello(observable, call) {
     let {
       // eslint-disable-next-line
-      value: { name, numGreetings, doComplete = true }
+      value: { name, numGreetings, doComplete = true, delayMs }
     } = observable;
 
     return Observable.create(observer => {
       numGreetings = numGreetings || 1;
-      while (--numGreetings >= 0) {
-        observer.next({ message: reply(name) });
-      }
+
+      const loop = () => {
+        const loopIt = () => {
+          observer.next({ message: reply(name) });
+          if (numGreetings-- >= 0) loop();
+        };
+        if (!delayMs) {
+          return loopIt();
+        }
+        setTimeout(loopIt, delayMs);
+      };
+      loop();
 
       if (doComplete) {
         // we do not always need to complete
