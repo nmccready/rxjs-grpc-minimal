@@ -58,7 +58,7 @@ describe(`client`, () => {
         });
       }
 
-      it.only('rxWrapper is called once', () => {
+      it('rxWrapper is called once', () => {
         const { server } = initServerPayload;
         makeCall();
         expect(conn.sayMultiHelloRx.calledOnce).to.be.ok;
