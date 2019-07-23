@@ -14,7 +14,10 @@ const protPath = getProtoPath(__dirname)(
   '../examples/helloworld/helloworld.proto'
 );
 const URI = '127.0.0.1:56001';
-const servers = { server, serverRx };
+const servers = {
+  server,
+  serverRx
+};
 
 const debug = require('../debug').spawn('test:index');
 
@@ -125,9 +128,11 @@ function runSuite({ initServer, reply }, serverName) {
 
             it('has .grpcCancel', () => {
               const callObs = makeCall();
-              return callObs.forEach(resp => {}).then(() => {
-                expect(callObs.grpcCancel).to.be.ok;
-              });
+              return callObs
+                .forEach(resp => {})
+                .then(() => {
+                  expect(callObs.grpcCancel).to.be.ok;
+                });
             });
 
             it('cancelCache is empty upon completion', done => {

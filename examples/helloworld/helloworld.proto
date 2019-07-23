@@ -21,6 +21,7 @@ message MultiHelloRequest {
   string name = 1;
   uint32 num_greetings = 2;
   bool do_complete = 3;
+  uint32 delay_ms = 4;
 }
 
 // The response message containing the greetings.
