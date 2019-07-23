@@ -4,6 +4,8 @@ const though2 = require('through2');
 const { getServiceNames } = require('../src/utils');
 
 const debug = require('../debug').spawn('client');
+
+const __test__ = {};
 /**
  * @param  {Object} grpcApi - pre-loaded grpcApi
  * @param  {String} methExt - your choice to extend or override the methodNames
@@ -54,6 +56,7 @@ function createMethod(clientMethod, dbg, cancelCache) {
     Subject / vs ReplaySubject might miss some entities!
     */
     const retObs = new Observable(observer => {
+      __test__.current = observer;
       const handler = (error, data) => {
         const d = dbg.spawn('handler');
         if (error) {
@@ -92,13 +95,13 @@ function createMethod(clientMethod, dbg, cancelCache) {
           call.removeListener('error', onError);
         };
 
-        const originalUnsub = observer.unsubscribe;
-        observer.unsubscribe = function(...args) {
-          // like end but with no error
-          // @see https://nodejs.org/api/stream.html#stream_readable_streams
-          call.destroy();
-          originalUnsub.call(observer, ...args);
-        };
+        // const originalUnsub = observer.unsubscribe;
+        // observer.unsubscribe = function(...args) {
+        //   // like end but with no error
+        //   // @see https://nodejs.org/api/stream.html#stream_readable_streams
+        //   call.destroy();
+        //   originalUnsub.call(observer, ...args);
+        // };
 
         call.pipe(though2.obj(onData, onEnd));
         call.on('error', onError);
@@ -163,6 +166,7 @@ function createMethod(clientMethod, dbg, cancelCache) {
 }
 
 module.exports = {
+  __test__,
   create,
   createMethod
 };

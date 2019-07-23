@@ -1,13 +1,15 @@
 const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');
-// const sinon = require('sinon');
+const sinon = require('sinon');
 const { Subject, ReplaySubject, Observable } = require('rxjs');
 
 const getProtoPath = require('./utils/getProtoPath');
 const server = require('../examples/helloworld/impls/server');
 const serverRx = require('../examples/helloworld/impls/serverRx');
 const { toRxClient } = require('../src');
+
+const { __test__ } = require('../src/client');
 
 const toGrpc = loadObject;
 
@@ -173,7 +175,11 @@ function runSuite({ initServer, reply }, serverName) {
             });
 
             describe.only('end early', () => {
-              it('stops early using take operator', done => {
+              afterEach(() => {
+                expect(__test__.current.error.called).not.to.be.ok;
+                expect(__test__.current.next.callCount === 1).to.be.ok;
+              });
+              it.only('stops early using take operator', done => {
                 const callObs = makeCall(false);
                 let actualCalls = 0;
                 const hot = callObs.take(1).subscribe({
@@ -191,10 +197,9 @@ function runSuite({ initServer, reply }, serverName) {
                     done();
                   }
                 });
-                // sinon.spy(hot, 'error');
-                // sinon.spy(hot, 'next');
-                // expect(hot.error.called).not.to.be.ok;
-                // expect(hot.next.called).not.to.be.ok;
+                // expect(__test__.current._parent === hot).to.be.ok;
+                sinon.spy(__test__.current, 'error');
+                sinon.spy(__test__.current, 'next');
                 return hot;
               });
               it('stops early using unsubscribe operator', done => {
