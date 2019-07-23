@@ -1,6 +1,7 @@
 const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');
+// const sinon = require('sinon');
 const { Subject, ReplaySubject, Observable } = require('rxjs');
 
 const getProtoPath = require('./utils/getProtoPath');
@@ -98,7 +99,6 @@ function runSuite({ initServer, reply }, serverName) {
             function makeCall(doComplete = true) {
               expectedCalls = 2;
               name = 'Brody';
-
               return conn.sayMultiHelloRx({
                 name,
                 numGreetings: expectedCalls,
@@ -169,6 +169,61 @@ function runSuite({ initServer, reply }, serverName) {
                 complete() {
                   throw new Error('should not complete');
                 }
+              });
+            });
+
+            describe.only('end early', () => {
+              it('stops early using take operator', done => {
+                const callObs = makeCall(false);
+                let actualCalls = 0;
+                const hot = callObs.take(1).subscribe({
+                  next() {
+                    actualCalls++;
+                  },
+                  error: (error) => {
+                    debug('error', error);
+                    expect(actualCalls).to.be.equal(1);
+                    done();
+                  },
+                  complete() {
+                    debug('complete');
+                    expect(actualCalls).to.be.equal(1);
+                    done();
+                  }
+                });
+                // sinon.spy(hot, 'error');
+                // sinon.spy(hot, 'next');
+                // expect(hot.error.called).not.to.be.ok;
+                // expect(hot.next.called).not.to.be.ok;
+                return hot;
+              });
+              it('stops early using unsubscribe operator', done => {
+                const callObs = makeCall(false);
+                let actualCalls = 0;
+                const hot = callObs.subscribe({
+                  next() {
+                    actualCalls++;
+                    debug('unsub');
+                    hot.unsubscribe();
+                    expect(actualCalls).to.be.equal(1);
+                    done();
+                  },
+                  error: (error) => {
+                    debug('error', error);
+                    expect(actualCalls).to.be.equal(1);
+                    done();
+                  },
+                  complete() {
+                    debug('complete');
+                    expect(actualCalls).to.be.equal(1);
+                    done();
+                  }
+                });
+                // sinon.spy(hot, 'error');
+                // sinon.spy(hot, 'next');
+                // expect(hot.error.called).not.to.be.ok;
+                // expect(hot.next.called).not.to.be.ok;
+                return hot;
               });
             });
           });

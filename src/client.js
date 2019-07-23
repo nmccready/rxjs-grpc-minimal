@@ -92,6 +92,14 @@ function createMethod(clientMethod, dbg, cancelCache) {
           call.removeListener('error', onError);
         };
 
+        const originalUnsub = observer.unsubscribe;
+        observer.unsubscribe = function(...args) {
+          // like end but with no error
+          // @see https://nodejs.org/api/stream.html#stream_readable_streams
+          call.destroy();
+          originalUnsub.call(observer, ...args);
+        };
+
         call.pipe(though2.obj(onData, onEnd));
         call.on('error', onError);
       }
