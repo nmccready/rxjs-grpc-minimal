@@ -96,6 +96,7 @@ describe(`client`, () => {
           const { impl, server } = initServerPayload;
           let nextCalls = 0;
           const delayMs = 100;
+          const expectedCalls = 2;
 
           const callObs = makeCall(false, 10, delayMs);
 
@@ -120,6 +121,7 @@ describe(`client`, () => {
             debug(() => 'unsubscribed !!!!!!!!!!!!!!!!!');
 
             expect(nextCalls).to.not.be.eql(10);
+            expect(nextCalls).to.be.eql(expectedCalls);
             setTimeout(() => {
               expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0);
               expect(grpcAPI.cancelCache.size).to.be.eql(0);
@@ -128,7 +130,7 @@ describe(`client`, () => {
 
             conn.close();
             server.forceShutdown(done);
-          }, 10);
+          }, delayMs * expectedCalls + 20);
         });
       });
     });
