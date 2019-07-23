@@ -96,7 +96,7 @@ describe(`client`, () => {
           const callObs = makeCall(false, 10);
 
           let nextCalls = 0;
-          const delay = 100;
+          const delay = 25;
           const expectedCalls = 2;
 
           const ret = callObs.delay(delay).subscribe({
@@ -105,24 +105,28 @@ describe(`client`, () => {
               nextCalls++;
             },
             error: maybeError => {
-              done(maybeError);
+              // done(maybeError);
             },
             complete: () => {
-              setTimeout(() => {
-                expect(nextCalls).to.be.eql();
-                expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0);
-                expect(grpcAPI.cancelCache.size).to.be.eql(0);
-                done();
-              }, 50);
-              conn.close();
-              server.forceShutdown();
+              // we should unsub before getting a completion
+              done(new Error('should not complete'));
             }
           });
 
           // wait an amount of time to get some expected calls
           setTimeout(() => {
             ret.unsubscribe();
-          }, delay * expectedCalls + 25);
+
+            setTimeout(() => {
+              expect(nextCalls).to.be.eql(expectedCalls);
+              // expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0);
+              // expect(grpcAPI.cancelCache.size).to.be.eql(0);
+              done();
+            }, 50);
+
+            conn.close();
+            server.forceShutdown(done);
+          }, delay * expectedCalls);
         });
       });
     });

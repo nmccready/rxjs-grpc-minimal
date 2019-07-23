@@ -1,9 +1,12 @@
 const { Observable } = require('rxjs');
 const though2 = require('through2');
+const EventEmitter = require('events');
+const { noop } = require('lodash');
 
 const { getServiceNames } = require('../src/utils');
 
 const debug = require('../debug').spawn('client');
+
 /**
  * @param  {Object} grpcApi - pre-loaded grpcApi
  * @param  {String} methExt - your choice to extend or override the methodNames
@@ -75,6 +78,9 @@ function createMethod(clientMethod, dbg, cancelCache) {
       }
 
       if (clientMethod.responseStream) {
+        const domain = createDomain();
+        call.domain = domain;
+
         const d = dbg.spawn('responseStream');
         const onData = (data, _, cb) => {
           d(() => ({ data }));
@@ -94,6 +100,14 @@ function createMethod(clientMethod, dbg, cancelCache) {
 
         call.pipe(though2.obj(onData, onEnd));
         call.on('error', onError);
+        domain.once('error', onError);
+
+        const originalUnsub = observer.unsubscribe;
+        observer.unsubscribe = function(...args) {
+          // call.removeListener('error', onError);
+          originalUnsub.apply(observer, args);
+          call.destroy();
+        };
       }
 
       let requestStreamCompleted = false;
@@ -153,6 +167,20 @@ function createMethod(clientMethod, dbg, cancelCache) {
   Object.assign(rxWrapper, clientMethod);
   return rxWrapper;
 }
+
+/*
+  node domain require('domain') is deprecated
+  mock one
+
+  Domain is to trap unhandled connection resets etc.. and pass them on
+  to some observer / observable.
+*/
+const createDomain = () => {
+  const domain = new EventEmitter();
+  domain.enter = noop;
+  domain.exit = noop;
+  return domain;
+};
 
 module.exports = {
   create,
