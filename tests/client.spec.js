@@ -91,7 +91,7 @@ describe(`client`, () => {
         });
       });
 
-      describe('unsubscribe', () => {
+      describe('unsubscribe serverside', () => {
         it('queueing many calls and unsubscribe early', done => {
           const { impl, server } = initServerPayload;
           let nextCalls = 0;
@@ -131,6 +131,120 @@ describe(`client`, () => {
             conn.close();
             server.forceShutdown(done);
           }, delayMs * expectedCalls + 20);
+        });
+      });
+
+      /**
+       * A streaming response that is ended early using take(1), takeUntil(), etc.
+       * Must also stop the incoming stream from GRPC or it will leak.
+       * RXJS operators like take(), takeUntil, etc. call complete() then unsubscribe().
+       * Users can also unsubscribe() directly in which case the complete() method
+       * will never run.
+       */
+      describe('unsubscribe from responseStream', () => {
+        it('via take operator', done => {
+          const { impl, server } = initServerPayload;
+          const callObs = makeCall(false, 10);
+
+          let nextCalls = 0;
+          const expectedCalls = 2;
+
+          callObs.take(expectedCalls).subscribe({
+            next: () => {
+              expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(1);
+              nextCalls++;
+            },
+            error: maybeError => {
+              done(maybeError);
+            },
+            complete: () => {
+              setTimeout(() => {
+                expect(nextCalls).to.be.eql(expectedCalls);
+                expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0);
+                // This next line is key, if stream is still open cancelCache will have length.
+                // Checking its 0 ensures we've closed stream for good.
+                expect(grpcAPI.cancelCache.size).to.be.eql(0);
+                done();
+              }, 50);
+              conn.close();
+              server.forceShutdown();
+            }
+          });
+        });
+        it('manually', done => {
+          const { impl, server } = initServerPayload;
+          const callObs = makeCall(false, 10);
+
+          let nextCalls = 0;
+          const expectedCalls = 4;
+
+          const ret = callObs.subscribe({
+            next: () => {
+              expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(1);
+              nextCalls++;
+              if (nextCalls === expectedCalls) {
+                ret.unsubscribe();
+              }
+              if (nextCalls > expectedCalls) {
+                throw new Error('Too many next calls');
+              }
+            },
+            error: maybeError => {
+              done(maybeError);
+            },
+            complete: () => {
+              done(new Error('Unsubscribe should not run complete'));
+            }
+          });
+          // add RXJS teardown logic called on unsubscribe
+          ret.add(() => {
+            conn.close();
+            server.forceShutdown();
+            setTimeout(() => {
+              expect(nextCalls).to.be.eql(expectedCalls, 'nextCalls eql expectedCalls');
+              expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0, 'holdingObservers eql 0');
+              expect(grpcAPI.cancelCache.size).to.be.eql(0, 'cancelCache eql 0');
+              done();
+            }, 50); // give test connection time to shut down
+          });
+        });
+        it('manually after delay so all responseStreams have come in', done => {
+          const { impl, server } = initServerPayload;
+          const callObs = makeCall(false, 10);
+
+          let nextCalls = 0;
+          const delay = 100;
+          const expectedCalls = 4;
+
+          const ret = callObs.delay(delay).subscribe({
+            next: () => {
+              expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(1);
+              nextCalls++;
+              if (nextCalls === expectedCalls) {
+                ret.unsubscribe();
+              }
+              if (nextCalls > expectedCalls) {
+                throw new Error('Too many next calls');
+              }
+            },
+            error: maybeError => {
+              done(maybeError);
+            },
+            complete: () => {
+              done(new Error('Unsubscribe should not run complete'));
+            }
+          });
+          // add RXJS teardown logic called on unsubscribe
+          ret.add(() => {
+            conn.close();
+            server.forceShutdown();
+            setTimeout(() => {
+              expect(nextCalls).to.be.eql(expectedCalls, 'nextCalls eql expectedCalls');
+              expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(0, 'holdingObservers eql 0');
+              expect(grpcAPI.cancelCache.size).to.be.eql(0, 'cancelCache eql 0');
+              done();
+            }, 50); // give test connection time to shut down
+          });
         });
       });
     });
