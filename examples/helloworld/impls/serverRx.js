@@ -1,5 +1,7 @@
 const { Observable } = require('rxjs');
 
+const debug = require('../../../debug').spawn('serverRx');
+
 function mockService() {
   sayMultiHello.holdingObservers = new Set();
 
@@ -23,14 +25,25 @@ function mockService() {
   function sayMultiHello(observable, call) {
     let {
       // eslint-disable-next-line
-      value: { name, numGreetings, doComplete = true }
+      value: { name, numGreetings = 1, doComplete = true, delayMs }
     } = observable;
 
+    debug(() => ({ name, numGreetings, doComplete, delayMs }));
+
     return Observable.create(observer => {
-      numGreetings = numGreetings || 1;
-      while (--numGreetings >= 0) {
-        observer.next({ message: reply(name) });
-      }
+      const loop = () => {
+        const loopIt = () => {
+          numGreetings--;
+          if (numGreetings < 0) return;
+          observer.next({ message: reply(name) });
+          loop();
+        };
+        if (!delayMs) {
+          return loopIt();
+        }
+        setTimeout(loopIt, delayMs);
+      };
+      loop();
 
       if (doComplete) {
         // we do not always need to complete
