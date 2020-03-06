@@ -1,4 +1,7 @@
-const { Observable } = require('rxjs');
+const {
+  of,
+  Observable
+} = require('rxjs');
 const through2 = require('through2');
 
 const debug = require('../debug').spawn('server');
@@ -26,7 +29,7 @@ function createMethod(rxImpl, name, methods, dbg) {
   return async function(call, callback) {
     dbg(() => 'called');
     // SET SYNC REQUEST OBSERVER
-    let observable = Observable.of(call.request);
+    let observable = of(call.request);
 
     if (serviceMethod.requestStream) {
       observable = createRequestStream({ call, name, dbg });

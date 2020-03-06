@@ -1,3 +1,4 @@
+const {take, delay: rxjsDelay} = require('rxjs/operators');
 const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');
@@ -149,7 +150,7 @@ describe(`client`, () => {
           let nextCalls = 0;
           const expectedCalls = 2;
 
-          callObs.take(expectedCalls).subscribe({
+          callObs.pipe(take(expectedCalls)).subscribe({
             next: () => {
               expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(1);
               nextCalls++;
@@ -216,7 +217,7 @@ describe(`client`, () => {
           const delay = 100;
           const expectedCalls = 4;
 
-          const ret = callObs.delay(delay).subscribe({
+          const ret = callObs.pipe(rxjsDelay(delay)).subscribe({
             next: () => {
               expect(impl.sayMultiHello.holdingObservers.size).to.be.eql(1);
               nextCalls++;

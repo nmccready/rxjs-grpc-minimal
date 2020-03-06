@@ -1,7 +1,11 @@
+const {
+  of,
+  Subject,
+  ReplaySubject
+} = require('rxjs');
 const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');
-const { Subject, ReplaySubject, Observable } = require('rxjs');
 
 const getProtoPath = require('./utils/getProtoPath');
 const server = require('../examples/helloworld/impls/server');
@@ -226,7 +230,7 @@ function runSuite({ initServer, reply }, serverName) {
             it('streamish - of', () => {
               const name = 'of';
               return conn
-                .streamSayHelloRx(Observable.of({ name }))
+                .streamSayHelloRx(of({ name }))
                 .forEach(resp => {
                   expect(grpcAPI.cancelCache.size).to.be.eql(0);
                   expect(resp).to.deep.equal({ message: reply(name) });

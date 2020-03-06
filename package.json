@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "debug-fabulous": "^1.1.0",
-    "rxjs": "^5.2.0",
+    "rxjs": "6.0.0",
     "through2": "^2.0.3"
   },
   "devDependencies": {
