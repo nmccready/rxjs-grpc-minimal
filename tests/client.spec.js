@@ -1,4 +1,4 @@
-const {take, delay: rxjsDelay} = require('rxjs/operators');
+const { take, delay: rxjsDelay } = require('rxjs/operators');
 const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');

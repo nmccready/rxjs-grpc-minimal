@@ -1,7 +1,4 @@
-const {
-  of,
-  Observable
-} = require('rxjs');
+const { of, Observable } = require('rxjs');
 const through2 = require('through2');
 
 const debug = require('../debug').spawn('server');

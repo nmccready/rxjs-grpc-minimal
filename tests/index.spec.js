@@ -1,8 +1,4 @@
-const {
-  of,
-  Subject,
-  ReplaySubject
-} = require('rxjs');
+const { of, Subject, ReplaySubject } = require('rxjs');
 const { loadObject, credentials } = require('grpc');
 const { loadSync } = require('protobufjs');
 const { expect } = require('chai');
