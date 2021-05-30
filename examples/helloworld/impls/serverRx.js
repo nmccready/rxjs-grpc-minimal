@@ -1,4 +1,4 @@
-const { Observable } = require('rxjs');
+const { of, Observable } = require('rxjs');
 
 const debug = require('../../../debug').spawn('serverRx');
 
@@ -7,7 +7,7 @@ function mockService() {
 
   return {
     sayHello({ value: { name } }) {
-      return Observable.of({
+      return of({
         message: reply(name)
       });
     },
